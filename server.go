@@ -30,7 +30,7 @@ type server struct {
 }
 
 func NewServer() *server {
-	return &server{logger: log.New(os.Stdout, "[do]:", log.LstdFlags)}
+	return &server{logger: log.New(os.Stdout, "[do]:", log.LstdFlags|log.Lshortfile)}
 }
 
 func (s *server) addRout(r string, method string, handler interface{}) {
@@ -120,15 +120,16 @@ func (s *server) routeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ctx := Context{ResponseWriter: w, Request: r, Params: map[string]string{}, server: s}
-	r.ParseForm()
+	ctx := Context{ResponseWriter: w, Request: r, querys: map[string]string{}, server: s}
+	// r.ParseForm()
+	// r.ParseMultipartForm(1024)
 	if len(r.Form) > 0 {
 		for k, v := range r.Form {
-			ctx.Params[k] = v[0]
+			ctx.querys[k] = v[0]
 		}
 	}
 	for _, route := range s.routes {
-		if !route.cr.MatchString(requestPath) {
+		if !route.cr.MatchString(requestPath) || route.method != r.Method {
 			continue
 		}
 		match := route.cr.FindStringSubmatch(requestPath)
@@ -153,6 +154,7 @@ func (s *server) routeHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			s.logger.Println("error in marshal data:", err)
 		}
+		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write(data); err != nil {
 			s.logger.Println("error in write:", err)
 		}
