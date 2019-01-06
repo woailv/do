@@ -8,6 +8,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"time"
 )
 
 type serverConf struct {
@@ -114,20 +115,19 @@ func requiresContext(handlerType reflect.Type) bool {
 }
 
 func (s *server) routeHandler(w http.ResponseWriter, r *http.Request) {
+	// 请求路径
 	requestPath := r.URL.Path
+	// 构建上下文
+	ctx := Context{ResponseWriter: w, Request: r, querys: map[string]string{}, server: s}
+	// 设置请求时间头
+	ctx.SetHeader("Date", time.Now().Format(time.RFC1123), true)
+	// 静态文件
 	if r.Method == "GET" || r.Method == "HEAD" {
 		if s.tryServingFile(requestPath, w, r) {
 			return
 		}
 	}
-	ctx := Context{ResponseWriter: w, Request: r, querys: map[string]string{}, server: s}
-	// r.ParseForm()
-	// r.ParseMultipartForm(1024)
-	if len(r.Form) > 0 {
-		for k, v := range r.Form {
-			ctx.querys[k] = v[0]
-		}
-	}
+	// 路由适配
 	for _, route := range s.routes {
 		if !route.cr.MatchString(requestPath) || route.method != r.Method {
 			continue
@@ -137,12 +137,15 @@ func (s *server) routeHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		var args []reflect.Value
+		// 回调函数确认是否添加上下文参数
 		if requiresContext(route.handler.Type()) {
 			args = append(args, reflect.ValueOf(&ctx))
 		}
+		// 回调函数添加路径参数(有路径参数,回调函数必须接收,否则会产生异常)
 		for _, arg := range match[1:] {
 			args = append(args, reflect.ValueOf(arg))
 		}
+		// -。TODO
 		value := route.handler.Call(args)[0]
 		if value.Kind() == reflect.String {
 			if _, err := w.Write([]byte(value.String())); err != nil {

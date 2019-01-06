@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/woailv/do"
+
+	"github.com/gin-gonic/gin"
 )
 
 type A struct {
