@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -21,14 +22,21 @@ func main() {
 	})
 	do.Post("/", func(ctx *do.Context) interface{} {
 		a := new(A)
-		// if err := ctx.Json2(a); err != nil {
-		// 	return err.Error()
-		// }
-		if err := ctx.FormData2(a); err != nil {
+		if err := ctx.Json2(a); err != nil {
 			return err.Error()
 		}
-		logger.Println(a)
-
+		if err := ctx.Form2(a); err != nil {
+			return err.Error()
+		}
+		f, _, err := ctx.FormFile("file")
+		if err != nil {
+			return err.Error()
+		}
+		data, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err.Error()
+		}
+		logger.Println(string(data))
 		return a
 	})
 	do.Run(":9000")

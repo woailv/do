@@ -32,11 +32,40 @@ func (c *Context) Json2(ptr interface{}) error {
 
 const defaultMemory = 32 * 1024 * 1024
 
-func (c *Context) FormData2(ptr interface{}) error {
-	if err := c.Request.ParseMultipartForm(defaultMemory); err != nil {
-		return err
+func (c *Context) Form2(ptr interface{}) error {
+	contentType := filterFlags(c.Request.Header.Get("Content-Type"))
+	c.server.logger.Println("Content-Type:", contentType)
+	switch contentType {
+	case "application/x-www-form-urlencoded":
+		if err := c.Request.ParseForm(); err != nil {
+			return err
+		}
+		return mapForm(ptr, c.Request.PostForm)
+	case "multipart/form-data":
+		if err := c.Request.ParseMultipartForm(defaultMemory); err != nil {
+			return err
+		}
+		return mapForm(ptr, c.Request.MultipartForm.Value)
 	}
-	return mapForm(ptr, c.Request.MultipartForm.Value)
+	c.server.logger.Panicln("panic in Content-Type:", contentType)
+	return nil
+}
+
+func filterFlags(content string) string {
+	for i, char := range content {
+		if char == ' ' || char == ';' {
+			return content[:i]
+		}
+	}
+	return content
+}
+
+func (c *Context) FormData2(ptr interface{}) error {
+	// if err := c.Request.ParseMultipartForm(defaultMemory); err != nil {
+	// 	return err
+	// }
+	// return mapForm(ptr, c.Request.MultipartForm.Value)
+	panic("v")
 }
 
 func mapForm(ptr interface{}, form map[string][]string) error {

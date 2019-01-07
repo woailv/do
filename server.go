@@ -132,6 +132,7 @@ func (s *server) routeHandler(w http.ResponseWriter, r *http.Request) {
 		if !route.cr.MatchString(requestPath) || route.method != r.Method {
 			continue
 		}
+		// 路由匹配成功,获取路径参数
 		match := route.cr.FindStringSubmatch(requestPath)
 		if len(match[0]) != len(requestPath) {
 			continue
@@ -145,19 +146,21 @@ func (s *server) routeHandler(w http.ResponseWriter, r *http.Request) {
 		for _, arg := range match[1:] {
 			args = append(args, reflect.ValueOf(arg))
 		}
-		// -。TODO
+		// 调用处理函数,获取响应数据
 		value := route.handler.Call(args)[0]
-		if value.Kind() == reflect.String {
+		// 响应html文本数据
+		if value.Kind() == reflect.String { //Content-Type →text/html; charset=utf-8 =>自动设置
 			if _, err := w.Write([]byte(value.String())); err != nil {
 				s.logger.Println("error in write:", err)
 			}
 			return
 		}
+		// 响应json数据
 		data, err := json.Marshal(value.Interface())
 		if err != nil {
 			s.logger.Println("error in marshal data:", err)
 		}
-		w.Header().Set("Content-Type", "application/json")
+		ctx.SetHeader("Content-Type", "application/json", true)
 		if _, err := w.Write(data); err != nil {
 			s.logger.Println("error in write:", err)
 		}
